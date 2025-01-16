@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Magical Particle Fox with p5.js</title>
+    <style>
+        /* Ensure the canvas takes up the full screen */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: black;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Include the p5.js library from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/p5@latest/lib/p5.min.js"></script>
+    <script>
+        // Particle system setup
+        const NUM_PARTICLES = 500;    // Adjust to control the number of particles
+        let particles = [];           // Array to hold all particles
+        let foxPoints = [];           // Array to hold silhouette points of the fox shape
+        let img;
+
+        function preload() {
+            // Load a silhouette animal image (a black-and-white fox)
+            img = loadImage('https://i.imgur.com/Pvw9VAI.jpeg');
+        }
+
+        function setup() {
+            // Create a full-window canvas
+            createCanvas(windowWidth, windowHeight);
+            colorMode(HSB, 360, 100, 100, 100);
+            noStroke();
+
+            // Convert the loaded fox image into points for particles to follow
+            img.loadPixels();
+            const density = 4; // Controls density of sampled points
+            for (let y = 0; y < img.height; y += density) {
+                for (let x = 0; x < img.width; x += density) {
+                    // Get pixel color and add points only if it's black (the silhouette)
+                    const index = (x + y * img.width) * 4;
+                    const r = img.pixels[index];
+                    const g = img.pixels[index + 1];
+                    const b = img.pixels[index + 2];
+                    if (r < 128 && g < 128 && b < 128) {
+                        const worldX = map(x, 0, img.width, width / 4, (width * 3) / 4);
+                        const worldY = map(y, 0, img.height, height / 4, (height * 3) / 4);
+                        foxPoints.push(createVector(worldX, worldY));
+                    }
+                }
+            }
+
+            // Initialize the particle system
+            for (let i = 0; i < NUM_PARTICLES; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function draw() {
+            // Draw a semi-transparent background to create fading trails
+            background(0, 20);
+
+            // Update and display each particle
+            for (let p of particles) {
+                p.move();
+                p.show();
+            }
+        }
+
+        // Particle class definition
+        class Particle {
+            constructor() {
+                // Set initial position randomly on the canvas
+                this.pos = createVector(random(width), random(height));
+                this.vel = p5.Vector.random2D();   // Initial velocity in a random direction
+                this.acc = createVector(0, 0);    // Acceleration starts at zero
+                this.maxSpeed = random(1, 3);     // Random speed for variation
+                this.target = random(foxPoints);  // Pick a random target point from the silhouette
+                this.size = random(2, 5);         // Random size for unique particles
+                this.hue = random(360);           // Random color hue
+            }
+
+            move() {
+                // Calculate a steering force towards the target
+                const steer = p5.Vector.sub(this.target, this.pos);
+                steer.setMag(0.2);  // Control the magnitude of the steering force
+                this.acc.add(steer);
+
+                // Apply velocity and acceleration
+                this.vel.add(this.acc);
+                this.vel.limit(this.maxSpeed);
+                this.pos.add(this.vel);
+
+                // Reset acceleration for the next frame
+                this.acc.mult(0);
+
+                // If the particle is very close to its target, choose a new one
+                if (p5.Vector.dist(this.pos, this.target) < 10) {
+                    this.target = random(foxPoints);
+                }
+
+                // Slowly change color over time
+                this.hue += 0.5;
+                if (this.hue > 360) {
+                    this.hue -= 360;
+                }
+            }
+
+            show() {
+                // Draw the particle as a colorful ellipse with semi-transparency
+                fill(this.hue, 80, 100, 60);
+                ellipse(this.pos.x, this.pos.y, this.size);
+            }
+        }
+
+        // Handle window resizing gracefully by resizing the canvas
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>
