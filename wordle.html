@@ -1,0 +1,392 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle AI Game</title>
+    <style>
+        body {
+            background-color: #121213;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(5, 60px);
+            grid-gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tile {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #3a3a3c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            text-transform: uppercase;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+
+        .correct {
+            background-color: #538d4e;
+            border-color: #538d4e;
+        }
+
+        .present {
+            background-color: #b59f3b;
+            border-color: #b59f3b;
+        }
+
+        .absent {
+            background-color: #3a3a3c;
+            border-color: #3a3a3c;
+        }
+
+        #score {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+
+        #restart-button {
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #818384;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #restart-button:hover {
+            background-color: #565758;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 100; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #333;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            text-align: center;
+            color: #fff;
+        }
+
+        .modal-content button {
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #818384;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .modal-content button:hover {
+            background-color: #565758;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Wordle AI Game</h1>
+    <div id="score">Score: 15</div>
+    <div id="game-board"></div>
+    <button id="restart-button">Restart Game</button>
+
+    <!-- Modal -->
+    <div id="end-modal" class="modal">
+        <div class="modal-content">
+            <p id="modal-message"></p>
+            <button id="modal-restart">Restart</button>
+        </div>
+    </div>
+
+    <script>
+        const possibleWords = [
+            'apple', 'adapt', 'alert', 'alike', 'arise', 'aisle', 'anger', 'angst', 'apart', 'amend', 'ample', 'adore', 'ahead', 'aglow', 'await', 'aware', 'awoke', 'attic', 'agape', 'admit',
+            'brick', 'bride', 'bloom', 'blame', 'bleed', 'bleak', 'bluff', 'boost', 'broad', 'brawl', 'brawn', 'badge', 'bagel', 'baler', 'balmy', 'banal', 'banjo', 'barge', 'basil', 'beach',
+            'crane', 'crank', 'craze', 'cacao', 'cabin', 'cable', 'cache', 'caddy', 'cagey', 'cajun', 'calyx', 'camel', 'cameo', 'canal', 'candy', 'canny', 'canoe', 'canon', 'caput', 'cargo',
+            'daddy', 'daily', 'dairy', 'daisy', 'dally', 'dance', 'dandy', 'dared', 'darts', 'dashy', 'dated', 'daunt', 'dealt', 'death', 'debar', 'debit', 'debug', 'debut', 'decay', 'decoy',
+            'eager', 'eagle', 'early', 'earth', 'ebony', 'edify', 'eerie', 'egret', 'eight', 'elate', 'elbow', 'elder', 'elect', 'elite', 'elude', 'email', 'embed', 'ember', 'emcee', 'empty',
+            'fable', 'facet', 'fader', 'faint', 'fairy', 'faith', 'false', 'fancy', 'fanny', 'farce', 'fatal', 'fatty', 'favor', 'feast', 'fecal', 'feint', 'fella', 'felon', 'femur', 'fence',
+            'gaily', 'gamer', 'gamma', 'gamut', 'gassy', 'gator', 'gauge', 'gaunt', 'gavel', 'gears', 'gecko', 'geeky', 'geese', 'gelid', 'genre', 'ghost', 'ghoul', 'giant', 'giddy', 'gipsy',
+            'habit', 'hairy', 'halve', 'happy', 'hardy', 'harem', 'harpy', 'harsh', 'haste', 'hasty', 'hatch', 'hater', 'haunt', 'haven', 'havoc', 'heady', 'heals', 'heaps', 'heard', 'heart',
+            'icier', 'icing', 'ideal', 'idiot', 'idyll', 'igloo', 'iliac', 'image', 'imbue', 'impel', 'imply', 'inane', 'inbox', 'incur', 'index', 'inept', 'inert', 'infer', 'ingot', 'innie',
+            'jaded', 'jails', 'jammy', 'jazzy', 'jeans', 'jelly', 'jerky', 'jetty', 'jiffy', 'jingo',
+            'kabob', 'kappa', 'karma', 'kayak', 'kebab', 'khaki', 'kicks', 'kiddy', 'kilty', 'kinda',
+            'label', 'labor', 'laden', 'ladle', 'lager', 'lance', 'lands', 'lanky', 'lapel', 'lapse', 'large', 'latch', 'later', 'lathe', 'laugh', 'layer', 'leach', 'leafy', 'leaky', 'leapt',
+            'macaw', 'macho', 'madam', 'madly', 'mafia', 'magic', 'magma', 'maize', 'major', 'maker', 'mambo', 'mamma', 'mammy', 'manga', 'mange', 'mango', 'mangy', 'mania', 'manic', 'manly',
+            'naive', 'naked', 'nanny', 'nasal', 'nasty', 'natal', 'naval', 'navel', 'neigh', 'nerdy', 'nerve', 'never', 'newer', 'newly', 'nexus', 'nicer', 'niche', 'niece', 'nifty', 'night',
+            'oaken', 'oathy', 'obese', 'obeys', 'occur', 'ocean', 'octal', 'octet', 'odder', 'oddly', 'offal', 'offer', 'often', 'ogled', 'ogler', 'ogres', 'oiled', 'okapi', 'olden', 'older',
+            'paddy', 'pagan', 'pager', 'paint', 'paler', 'palsy', 'panel', 'panic', 'pansy', 'papal', 'paper', 'parer', 'parka', 'parry', 'parse', 'party', 'pasta', 'paste', 'pasty', 'patch',
+            'quack', 'quail', 'quake', 'qualm', 'quark', 'quart', 'quash', 'quasi', 'queen', 'queer',
+            'rabid', 'radar', 'radii', 'radio', 'rainy', 'raise', 'rajah', 'rally', 'ralph', 'ramen', 'ranch', 'randy', 'range', 'rapid', 'rarer', 'raspy', 'ratty', 'raven', 'rayon', 'razor', 'reach',
+            'sadden', 'saggy', 'saint', 'salad', 'salty', 'salve', 'sandy', 'saner', 'sappy', 'sassy', 'satin', 'sauce', 'saucy', 'sauna', 'saved', 'saver', 'savvy', 'scald', 'scale',
+            'tabby', 'table', 'taboo', 'tacit', 'tacky', 'taffy', 'talon', 'tamer', 'tangy', 'tardy', 'targe', 'tarot', 'taste', 'tasty', 'tatty', 'taunt', 'tawny', 'teach', 'teary',
+            'udder', 'ulcer', 'ultra', 'umbra', 'unary', 'unify', 'union', 'unite', 'unity', 'unlit',
+            'vague', 'valet', 'valid', 'valor', 'value', 'valve', 'vapor', 'vapid', 'vagus', 'vault',
+            'wacky', 'wader', 'wafer', 'wager', 'wagon', 'waist', 'waits', 'waive', 'waken', 'waltz', 'wanly', 'wanna', 'wants', 'warts', 'washy', 'wasps', 'waste', 'watch', 'water', 'waver',
+            'xylem', 'xylol', 'xenon', 'xeric', 'xylan',
+            'yacht', 'yanks', 'yappy', 'yarns', 'yawns', 'yearn', 'yeast', 'yield', 'yikes', 'yolks',
+            'zappy', 'zesty', 'zonal', 'zones', 'zebra', 'zebus', 'zilch', 'zippy', 'zombi', 'zooms',
+            'jenny', 'jests', 'jeton', 'jewel', 'jinks', 'jived', 'jives', 'jocks', 'joist', 'joker',
+            'kings', 'kinks', 'kiosk', 'kilns', 'kepis', 'kitty', 'knack', 'knave', 'knead', 'kneel',
+            'quell', 'query', 'quest', 'queue', 'quick', 'quiet', 'quiff', 'quilt', 'quoin', 'quoit',
+            'unman', 'unmet', 'unpin', 'unsay', 'unset', 'unwed', 'unzip', 'upend', 'upper', 'upset',
+            'vegan', 'velar', 'veldt', 'venal', 'venom', 'vents', 'versa', 'verve', 'vesta', 'vicar',
+            'xenia', 'xenic', 'xerox', 'xysts', 'xylyl',
+            'abode', 'abhor', 'abide', 'adage', 'adept', 'afire', 'after', 'again', 'agony', 'aloud'
+        ];
+
+        let solution = '';
+        let score = 0;
+        let currentRow = 0;
+        const maxRows = 6;
+        let possibleGuesses = [...possibleWords];
+        const gameBoard = document.getElementById('game-board');
+        const scoreDisplay = document.getElementById('score');
+        const restartButton = document.getElementById('restart-button');
+
+        const endModal = document.getElementById('end-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const modalRestart = document.getElementById('modal-restart');
+
+        // Initialize the game
+        function initGame() {
+            gameBoard.innerHTML = '';
+            currentRow = 0;
+            possibleGuesses = [...possibleWords];
+            solution = possibleWords[Math.floor(Math.random() * possibleWords.length)];
+            createTiles();
+            setTimeout(runAI, 500);
+        }
+
+        // Create tiles for the game board
+        function createTiles() {
+            for (let i = 0; i < maxRows * 5; i++) {
+                const tile = document.createElement('div');
+                tile.classList.add('tile');
+                gameBoard.appendChild(tile);
+            }
+        }
+
+        // Show modal with a message
+        function showModal(message) {
+            modalMessage.textContent = message;
+            endModal.style.display = 'block';
+        }
+
+        // Run the AI to make guesses
+        function runAI() {
+            if (currentRow >= maxRows) {
+                showModal(`AI couldn't guess the word. The correct word was "${solution.toUpperCase()}".`);
+                return;
+            }
+
+            const guess = getBestGuess();
+            if (!guess) {
+                showModal("No possible guesses left!");
+                return;
+            }
+
+            const evaluation = evaluateGuess(guess);
+            displayGuess(guess, evaluation);
+
+            if (guess === solution) {
+                showModal(`AI guessed the word "${solution.toUpperCase()}" correctly in ${currentRow + 1} attempts!`);
+                return;
+            }
+
+            filterPossibleGuesses(guess, evaluation);
+            currentRow++;
+            setTimeout(runAI, 500);
+        }
+
+        // Get the best guess from possible guesses
+        function getBestGuess() {
+            if (possibleGuesses.length === 0) return '';
+            if (currentRow === 0) {
+                // Choose a random word from the possible guesses as the first guess
+                return possibleGuesses[Math.floor(Math.random() * possibleGuesses.length)];
+            }
+
+            let letterWeights = {};
+            for (const word of possibleGuesses) {
+                for (let i = 0; i < 5; i++) {
+                    letterWeights[word[i]] = (letterWeights[word[i]] || 0) + 1;
+                }
+            }
+            let bestGuess = '';
+            let bestScore = -1;
+            for (const word of possibleGuesses) {
+                let score = word.split('').reduce((sum, letter) => sum + (letterWeights[letter] || 0), 0);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestGuess = word;
+                }
+            }
+            return bestGuess;
+        }
+
+        // Evaluate the guess against the solution
+        function evaluateGuess(guess) {
+            const result = [];
+            const solutionArray = solution.split('');
+            const guessArray = guess.split('');
+
+            // First pass for correct letters
+            for (let i = 0; i < 5; i++) {
+                if (guessArray[i] === solutionArray[i]) {
+                    result.push('correct');
+                    solutionArray[i] = null;
+                    score++;
+                } else {
+                    result.push('unsure');
+                }
+            }
+
+            // Second pass for present/absent letters
+            for (let i = 0; i < 5; i++) {
+                if (result[i] === 'unsure') {
+                    if (solutionArray.includes(guessArray[i])) {
+                        result[i] = 'present';
+                        solutionArray[solutionArray.indexOf(guessArray[i])] = null;
+                        score++;
+                    } else {
+                        result[i] = 'absent';
+                        score++;
+                    }
+                }
+            }
+
+            updateScore();
+            return result;
+        }
+
+        // Display the guess and its evaluation on the board
+        function displayGuess(guess, evaluation) {
+            const rowOffset = currentRow * 5;
+            for (let i = 0; i < 5; i++) {
+                const tile = gameBoard.children[rowOffset + i];
+                tile.textContent = guess[i];
+                tile.classList.add(evaluation[i]);
+            }
+        }
+
+        // Filter possible guesses based on the evaluation using frequency logic
+        function filterPossibleGuesses(guess, evaluation) {
+            // Count occurrences of each letter in the guess according to its evaluation
+            const guessLetterCount = {};
+            for (let i = 0; i < 5; i++) {
+                const letter = guess[i];
+                if (!guessLetterCount[letter]) {
+                    guessLetterCount[letter] = { correct: 0, present: 0, absent: 0, total: 0 };
+                }
+                guessLetterCount[letter].total++;
+                if (evaluation[i] === 'correct') guessLetterCount[letter].correct++;
+                else if (evaluation[i] === 'present') guessLetterCount[letter].present++;
+                else if (evaluation[i] === 'absent') guessLetterCount[letter].absent++;
+            }
+
+            possibleGuesses = possibleGuesses.filter(word => {
+                // Check correct positions
+                for (let i = 0; i < 5; i++) {
+                    if (evaluation[i] === 'correct' && word[i] !== guess[i]) {
+                        return false;
+                    }
+                }
+
+                const wordCount = {};
+                for (const c of word) {
+                    wordCount[c] = (wordCount[c] || 0) + 1;
+                }
+
+                // Check present letters
+                for (let i = 0; i < 5; i++) {
+                    const letter = guess[i];
+                    if (evaluation[i] === 'present') {
+                        // letter must appear, but not in the same position
+                        if (!word.includes(letter) || word[i] === letter) {
+                            return false;
+                        }
+                    }
+                }
+
+                // Check overall letter counts:
+                for (const letter in guessLetterCount) {
+                    const requiredCount = guessLetterCount[letter].correct + guessLetterCount[letter].present;
+                    const candidateCount = wordCount[letter] || 0;
+
+                    // Must have at least as many occurrences as correct+present
+                    if (candidateCount < requiredCount) {
+                        return false;
+                    }
+
+                    // If absent and no correct/present for that letter, it shouldn't appear at all
+                    if (requiredCount === 0 && guessLetterCount[letter].absent > 0) {
+                        if (candidateCount > 0) {
+                            return false;
+                        }
+                    }
+
+                    // If there are absent occurrences but some correct/present,
+                    // the word should not exceed requiredCount occurrences of that letter.
+                    if (candidateCount > requiredCount && guessLetterCount[letter].absent > 0) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+        }
+
+        // Update the score display
+        function updateScore() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        // Restart the game from outside button
+        restartButton.addEventListener('click', () => {
+            score = 0;
+            updateScore();
+            initGame();
+        });
+
+        // Restart the game from the modal
+        modalRestart.addEventListener('click', () => {
+            endModal.style.display = 'none';
+            score = 0;
+            updateScore();
+            initGame();
+        });
+
+        // Start the game on page load
+        window.onload = initGame;
+    </script>
+</body>
+</html>
