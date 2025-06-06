@@ -397,13 +397,19 @@
   <script>
     // Single data structure for all items and their classifications
     const gameData = {
-      'ignore completion text': 'general',
-      'can check source code': 'general', 
-      'cancel PII': 'general',
-      'webpage guidelines document': 'general',
-      'three request follow-ups': 'general',
-      'aesthetics tie-break': 'general',
-      'baselines and modifiers': 'extended',
+	'ignore completion text': 'general',
+	'can check source code': 'general', 
+	'avoid technical jargon': 'multi',
+	'cancel PII': 'general',
+	'webpage guidelines document': 'general',
+	'three request follow-ups': 'general',
+	'aesthetics tie-break': 'general',
+	'baselines and modifiers': 'extended',
+	'hex codes in prompts': 'general',
+	'avoid complex follow-ups': 'multi',
+	'ratings caps for flaws': 'general',
+	'errors can carry over': 'extended',
+	'prompts can be one request': 'multi',
     };
 
     // Generate items dynamically
