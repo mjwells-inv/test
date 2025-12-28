@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Image Production Prompt Classification</title>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      color: #00ffff;
+      font-family: 'VT323', monospace;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      perspective: 1200px;
+    }
+
+    /* Apply CSS-based barrel distortion effect */
+    .screen {
+      width: 90vw;
+      height: 90vh;
+      background: #001111;
+      border: 2px solid #00cccc;
+      padding: 30px;
+      box-sizing: border-box;
+      transform: rotateX(4deg) scale(1.02);
+      border-radius: 4px;
+      box-shadow: 0 0 25px #00ffff33;
+      overflow-y: auto;
+      position: relative;
+      
+      /* Create barrel distortion using CSS filters and transforms */
+      filter: contrast(1.1) brightness(1.05);
+    }
+    
+    /* Apply the fishbowl effect to the entire body */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(ellipse 80% 60% at center, transparent 0%, transparent 50%, rgba(0,0,0,0.1) 70%, rgba(0,0,0,0.4) 85%, rgba(0,0,0,0.8) 100%);
+      pointer-events: none;
+      z-index: 1000;
+      border-radius: 50%;
+      transform: scale(1.5);
+    }
+    
+    /* Create the curved effect using CSS clip-path */
+    .screen {
+      clip-path: ellipse(90% 85% at center);
+      background-image: 
+        radial-gradient(ellipse at center, rgba(0,255,255,0.02) 0%, transparent 70%);
+    }
+
+    .scanlines::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        rgba(0, 255, 255, 0.04),
+        rgba(0, 255, 255, 0.04) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* Scanlines that cover the entire viewport - moved outside clipped area */
+    body::after {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        rgba(0, 255, 255, 0.04),
+        rgba(0, 255, 255, 0.04) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      pointer-events: none;
+      z-index: 1001;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 32px;
+      margin-bottom: 10px;
+      text-shadow: 0 0 3px #00ffff;
+    }
+
+    .instructions {
+      text-align: center;
+      font-size: 18px;
+      margin-bottom: 40px;
+      color: #66ffff;
+    }
+
+    .items-panel {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 25px;
+      margin-bottom: 50px;
+      min-height: 50px;
+      align-items: flex-start;
+    }
+
+    .item {
+      font-size: 24px;
+      color: #00ffff;
+      cursor: grab;
+      user-select: none;
+      display: flex;
+      gap: 1px;
+      transition: none;
+      align-items: baseline;
+      height: 32px; /* Fixed height to prevent movement */
+      overflow: visible;
+      position: relative;
+      white-space: nowrap; /* Prevent phrases from wrapping to new lines */
+    }
+
+    .item span {
+      display: inline-block;
+      transition: font-size 0.2s ease, transform 0.2s ease;
+      font-family: 'VT323', monospace;
+      position: relative;
+      line-height: 1;
+      transform-origin: bottom center; /* Anchor text scaling to bottom */
+    }
+
+    /* Individual letter animations with different delays - extended to 40 characters */
+    .item span:nth-child(1) { animation: jitter-soft 1.5s infinite ease-in-out 0s; }
+    .item span:nth-child(2) { animation: jitter-soft 1.5s infinite ease-in-out 0.2s; }
+    .item span:nth-child(3) { animation: jitter-soft 1.5s infinite ease-in-out 0.4s; }
+    .item span:nth-child(4) { animation: jitter-soft 1.5s infinite ease-in-out 0.6s; }
+    .item span:nth-child(5) { animation: jitter-soft 1.5s infinite ease-in-out 0.8s; }
+    .item span:nth-child(6) { animation: jitter-soft 1.5s infinite ease-in-out 1.0s; }
+    .item span:nth-child(7) { animation: jitter-soft 1.5s infinite ease-in-out 1.2s; }
+    .item span:nth-child(8) { animation: jitter-soft 1.5s infinite ease-in-out 1.4s; }
+    .item span:nth-child(9) { animation: jitter-soft 1.5s infinite ease-in-out 1.6s; }
+    .item span:nth-child(10) { animation: jitter-soft 1.5s infinite ease-in-out 1.8s; }
+    .item span:nth-child(11) { animation: jitter-soft 1.5s infinite ease-in-out 2.0s; }
+    .item span:nth-child(12) { animation: jitter-soft 1.5s infinite ease-in-out 2.2s; }
+    .item span:nth-child(13) { animation: jitter-soft 1.5s infinite ease-in-out 2.4s; }
+    .item span:nth-child(14) { animation: jitter-soft 1.5s infinite ease-in-out 2.6s; }
+    .item span:nth-child(15) { animation: jitter-soft 1.5s infinite ease-in-out 2.8s; }
+    .item span:nth-child(16) { animation: jitter-soft 1.5s infinite ease-in-out 3.0s; }
+    .item span:nth-child(17) { animation: jitter-soft 1.5s infinite ease-in-out 3.2s; }
+    .item span:nth-child(18) { animation: jitter-soft 1.5s infinite ease-in-out 3.4s; }
+    .item span:nth-child(19) { animation: jitter-soft 1.5s infinite ease-in-out 3.6s; }
+    .item span:nth-child(20) { animation: jitter-soft 1.5s infinite ease-in-out 3.8s; }
+    .item span:nth-child(21) { animation: jitter-soft 1.5s infinite ease-in-out 4.0s; }
+    .item span:nth-child(22) { animation: jitter-soft 1.5s infinite ease-in-out 4.2s; }
+    .item span:nth-child(23) { animation: jitter-soft 1.5s infinite ease-in-out 4.4s; }
+    .item span:nth-child(24) { animation: jitter-soft 1.5s infinite ease-in-out 4.6s; }
+    .item span:nth-child(25) { animation: jitter-soft 1.5s infinite ease-in-out 4.8s; }
+    .item span:nth-child(26) { animation: jitter-soft 1.5s infinite ease-in-out 5.0s; }
+    .item span:nth-child(27) { animation: jitter-soft 1.5s infinite ease-in-out 5.2s; }
+    .item span:nth-child(28) { animation: jitter-soft 1.5s infinite ease-in-out 5.4s; }
+    .item span:nth-child(29) { animation: jitter-soft 1.5s infinite ease-in-out 5.6s; }
+    .item span:nth-child(30) { animation: jitter-soft 1.5s infinite ease-in-out 5.8s; }
+    .item span:nth-child(31) { animation: jitter-soft 1.5s infinite ease-in-out 6.0s; }
+    .item span:nth-child(32) { animation: jitter-soft 1.5s infinite ease-in-out 6.2s; }
+    .item span:nth-child(33) { animation: jitter-soft 1.5s infinite ease-in-out 6.4s; }
+    .item span:nth-child(34) { animation: jitter-soft 1.5s infinite ease-in-out 6.6s; }
+    .item span:nth-child(35) { animation: jitter-soft 1.5s infinite ease-in-out 6.8s; }
+    .item span:nth-child(36) { animation: jitter-soft 1.5s infinite ease-in-out 7.0s; }
+    .item span:nth-child(37) { animation: jitter-soft 1.5s infinite ease-in-out 7.2s; }
+    .item span:nth-child(38) { animation: jitter-soft 1.5s infinite ease-in-out 7.4s; }
+    .item span:nth-child(39) { animation: jitter-soft 1.5s infinite ease-in-out 7.6s; }
+    .item span:nth-child(40) { animation: jitter-soft 1.5s infinite ease-in-out 7.8s; }
+
+    /* Spaces don't animate */
+    .item span.space { 
+      animation: none !important;
+      font-size: 24px !important;
+    }
+
+    /* Class to disable all wiggle effects */
+    .no-wiggle .item span {
+      animation: none !important;
+    }
+
+    .no-wiggle .item:hover span {
+      animation: none !important;
+    }
+
+    .item:hover span {
+      /* Remove the unified hover animation since each letter has its own now */
+    }
+
+    /* Fishbowl hover effects - extended to 40 characters */
+    .item:hover span:nth-child(1) { font-size: 20px; animation: jitter 0.3s infinite ease-in-out 0s; }
+    .item:hover span:nth-child(2) { font-size: 28px; animation: jitter 0.3s infinite ease-in-out 0.1s; }
+    .item:hover span:nth-child(3) { font-size: 32px; animation: jitter 0.3s infinite ease-in-out 0.2s; }
+    .item:hover span:nth-child(4) { font-size: 28px; animation: jitter 0.3s infinite ease-in-out 0.3s; }
+    .item:hover span:nth-child(5) { font-size: 24px; animation: jitter 0.3s infinite ease-in-out 0.4s; }
+    .item:hover span:nth-child(6) { font-size: 20px; animation: jitter 0.3s infinite ease-in-out 0.5s; }
+    .item:hover span:nth-child(7) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 0.6s; }
+    .item:hover span:nth-child(8) { font-size: 16px; animation: jitter 0.3s infinite ease-in-out 0.7s; }
+    .item:hover span:nth-child(9) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 0.8s; }
+    .item:hover span:nth-child(10) { font-size: 20px; animation: jitter 0.3s infinite ease-in-out 0.9s; }
+    .item:hover span:nth-child(11) { font-size: 22px; animation: jitter 0.3s infinite ease-in-out 1.0s; }
+    .item:hover span:nth-child(12) { font-size: 20px; animation: jitter 0.3s infinite ease-in-out 1.1s; }
+    .item:hover span:nth-child(13) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 1.2s; }
+    .item:hover span:nth-child(14) { font-size: 16px; animation: jitter 0.3s infinite ease-in-out 1.3s; }
+    .item:hover span:nth-child(15) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 1.4s; }
+    .item:hover span:nth-child(16) { font-size: 20px; animation: jitter 0.3s infinite ease-in-out 1.5s; }
+    .item:hover span:nth-child(17) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 1.6s; }
+    .item:hover span:nth-child(18) { font-size: 16px; animation: jitter 0.3s infinite ease-in-out 1.7s; }
+    .item:hover span:nth-child(19) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 1.8s; }
+    .item:hover span:nth-child(20) { font-size: 20px; animation: jitter 0.3s infinite ease-in-out 1.9s; }
+    .item:hover span:nth-child(21) { font-size: 22px; animation: jitter 0.3s infinite ease-in-out 2.0s; }
+    .item:hover span:nth-child(22) { font-size: 20px; animation: jitter 0.3s infinite ease-in-out 2.1s; }
+    .item:hover span:nth-child(23) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 2.2s; }
+    .item:hover span:nth-child(24) { font-size: 16px; animation: jitter 0.3s infinite ease-in-out 2.3s; }
+    .item:hover span:nth-child(25) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 2.4s; }
+    .item:hover span:nth-child(26) { font-size: 20px; animation: jitter 0.3s infinite ease-in-out 2.5s; }
+    .item:hover span:nth-child(27) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 2.6s; }
+    .item:hover span:nth-child(28) { font-size: 16px; animation: jitter 0.3s infinite ease-in-out 2.7s; }
+    .item:hover span:nth-child(29) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 2.8s; }
+    .item:hover span:nth-child(30) { font-size: 20px; animation: jitter 0.3s infinite ease-in-out 2.9s; }
+    .item:hover span:nth-child(31) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 3.0s; }
+    .item:hover span:nth-child(32) { font-size: 16px; animation: jitter 0.3s infinite ease-in-out 3.1s; }
+    .item:hover span:nth-child(33) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 3.2s; }
+    .item:hover span:nth-child(34) { font-size: 20px; animation: jitter 0.3s infinite ease-in-out 3.3s; }
+    .item:hover span:nth-child(35) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 3.4s; }
+    .item:hover span:nth-child(36) { font-size: 16px; animation: jitter 0.3s infinite ease-in-out 3.5s; }
+    .item:hover span:nth-child(37) { font-size: 18px; animation: jitter 0.3s infinite ease-in-out 3.6s; }
+    .item:hover span:nth-child(38) { font-size: 16px; animation: jitter 0.3s infinite ease-in-out 3.7s; }
+    .item:hover span:nth-child(39) { font-size: 14px; animation: jitter 0.3s infinite ease-in-out 3.8s; }
+    .item:hover span:nth-child(40) { font-size: 14px; animation: jitter 0.3s infinite ease-in-out 3.9s; }
+
+    /* Spaces stay normal size on hover */
+    .item:hover span.space { 
+      font-size: 24px !important;
+      animation: none !important;
+    }
+
+    .category .item:hover span {
+      font-size: 24px !important;
+      animation: jitter-soft 1.5s infinite ease-in-out;
+    }
+
+    .category .item span {
+      font-size: 24px !important;
+    }
+
+    @keyframes jitter-soft {
+      0%   { transform: translate(0px, 0px) rotate(0deg); }
+      25%  { transform: translate(-0.75px, 0.75px) rotate(-0.375deg); }
+      50%  { transform: translate(0.75px, -0.75px) rotate(0.375deg); }
+      75%  { transform: translate(-0.6px, -0.6px) rotate(0.225deg); }
+      100% { transform: translate(0.6px, 0.6px) rotate(-0.225deg); }
+    }
+
+    @keyframes jitter {
+      0%   { transform: translate(0px, 0px) rotate(0deg); }
+      25%  { transform: translate(-0.75px, 0.75px) rotate(-0.75deg); }
+      50%  { transform: translate(0.75px, -0.75px) rotate(0.75deg); }
+      75%  { transform: translate(-0.75px, -0.75px) rotate(0.375deg); }
+      100% { transform: translate(0.75px, 0.75px) rotate(-0.375deg); }
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      gap: 1vw;
+      flex-wrap: nowrap;
+      max-width: 100%;
+      margin: 0 auto;
+      overflow-x: auto;
+    }
+
+    .category {
+      flex: 1;
+      min-width: 0;
+      max-width: 25%;
+      min-height: 200px;
+      border: 1px dashed #00ffff;
+      padding: 15px;
+      background-color: #000c0c;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .category h3 {
+      margin: 0 0 10px;
+      font-size: clamp(12px, 2.5vw, 18px);
+      text-align: center;
+      text-transform: uppercase;
+      border-bottom: 1px solid #00cccc;
+      width: 100%;
+      word-wrap: break-word;
+      hyphens: auto;
+      line-height: 1.2;
+    }
+
+    .category .item {
+      font-size: clamp(14px, 2vw, 20px);
+      white-space: normal; /* Allow wrapping inside boxes */
+      text-align: center;
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: center;
+      height: auto; /* Remove fixed height for wrapped text */
+      margin-bottom: 5px;
+    }
+
+    .category .item span {
+      font-size: inherit !important;
+    }
+
+    .category .item:hover span {
+      font-size: inherit !important;
+      animation: jitter-soft 1.5s infinite ease-in-out;
+    }
+
+    .category.drag-over {
+      background-color: #002222;
+    }
+
+    button {
+      display: block;
+      margin: 40px auto 10px;
+      padding: 10px 30px;
+      background: none;
+      border: 1px solid #00ffff;
+      color: #00ffff;
+      font-size: 20px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #003333;
+    }
+
+    .result {
+      text-align: center;
+      font-size: 20px;
+      margin-top: 20px;
+    }
+
+    .correct {
+      color: #00ff00;
+    }
+
+    .incorrect {
+      color: #ff0033;
+    }
+
+    /* Video reward overlay */
+    #videoReward {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 3000;
+      flex-direction: column;
+    }
+
+    #rewardVideo {
+      width: 90vw;
+      height: 80vh;
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 25px #00ffff33;
+    }
+
+    #videoClose {
+      margin-top: 20px;
+      padding: 10px 30px;
+      background: none;
+      border: 1px solid #00ffff;
+      color: #00ffff;
+      font-family: 'VT323', monospace;
+      font-size: 18px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    #videoClose:hover {
+      background-color: #003333;
+    }
+		#boot-screen {
+	  position: absolute;
+	  inset: 0;
+	  background-color: #000;
+	  color: #00ffcc;
+	  font-family: 'VT323', monospace;
+	  padding: 40px;
+	  white-space: pre-wrap;
+	  z-index: 2000;
+	  display: flex;
+	  justify-content: start;
+	  align-items: start;
+	  line-height: 1.2;
+	  font-size: 14px;
+	  /* optional tweaks */
+	  letter-spacing: 0.1em;
+	}
+
+	#boot-output {
+	  max-width: 100%;
+	}
+  </style>
+</head>
+<audio id="bootSound" src="boot.mp3" preload="auto"></audio>
+<body>
+	<div id="startOverlay" style="
+	  position: fixed;
+	  inset: 0;
+	  background: black;
+	  color: #00ffff;
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	  font-family: 'VT323', monospace;
+	  font-size: 24px;
+	  z-index: 3000;
+	  cursor: pointer;
+	">
+	  [ PRESS ANY KEY TO BEGIN ]
+	</div>
+	<div id="boot-screen">
+	  <pre id="boot-output"></pre>
+	</div>
+  <div class="screen">
+    <h2>IMAGE PRODUCTION PROMPT CLASSIFICATION</h2>
+    <p class="instructions">Drag prompt phrases into the correct classification. Accuracy is mandatory.</p>
+
+    <div class="items-panel" id="itemsPanel">
+      <!-- Items will be dynamically generated -->
+    </div>
+
+    <div class="container">
+      <div class="category" id="photo">
+        <h3>PHOTOREALISTIC PROMPT</h3>
+      </div>
+      <div class="category" id="info">
+        <h3>INFOGRAPHIC PROMPT</h3>
+      </div>
+      <div class="category" id="vague">
+        <h3>TOO VAGUE</h3>
+      </div>
+      <div class="category" id="over">
+        <h3>OVER-OPTIMIZED</h3>
+      </div>
+    </div>
+
+    <button onclick="checkAnswers()">Submit Classification</button>
+    <button onclick="toggleWiggle()" id="wiggleToggle">Disable Wiggle</button>
+    <div id="result" class="result"></div>
+  </div>
+
+  <!-- Video reward overlay -->
+  <div id="videoReward">
+    <video id="rewardVideo" controls>
+      <source src="reward.mp4" type="video/mp4">
+      <source src="reward.webm" type="video/webm">
+      Your browser does not support the video tag.
+    </video>
+    <button id="videoClose" onclick="closeVideo()">Close Video</button>
+  </div>
+
+  <script>
+    // Single data structure for all items and their classifications
+    const gameData = {
+		'Flow diagram': 'info',
+		'pristine': 'over',
+		'catalog shot': 'photo',
+		'aligned rows': 'info',
+		'visual representation': 'vague',
+		'extreme HDR': 'over',
+		'8K resolution': 'photo',
+		'optionally add': 'vague',
+		'timeline': 'info',
+		'golden hour': 'photo',
+		'graphic': 'vague',
+		'natural skin texture': 'photo',
+		'extreme clarity': 'over',
+		'side-by-side columns': 'info',
+		'good-looking': 'vague',
+		'balanced exposure': 'photo',
+		'labeled sections': 'info',
+		'ultra realistic': 'over',
+		'image': 'vague',
+		'f/1.8 with creamy bokeh': 'photo',
+		'statistical presentation': 'info',
+		'taken with a DSLR': 'photo',
+		'boxed segments': 'info',
+		'raw and unedited': 'photo',
+		'insanely detailed': 'over',
+		'comparison chart': 'info',
+		'professional': 'vague',
+		'next-gen realism': 'over',
+		'shallow depth of field': 'photo',
+		'clearly separated sections': 'info',
+		'dramatic lighting': 'over',
+		'ISO 100': 'photo',
+		'design': 'vague',
+		'sequence of stages': 'info',
+		'diffused natural light': 'photo',
+		'left-to-right flow': 'info',
+		'crystal clear': 'over',
+		'minimalist': 'vague',
+		'grid layout': 'info',
+		'flawless skin': 'over',
+		'act as a photographer': 'photo',
+		'directional arrows': 'info',
+		'include something like': 'vague',
+		'product shot': 'photo',
+		'instructional layout': 'info',
+		'epic cinematic quality': 'over',
+		'50mm portrait': 'photo',
+		'detailed': 'vague',
+		'hierarchal text': 'info',
+		'eye-level shot': 'photo',
+    };
+
+    // Generate items dynamically
+    function createItems() {
+      const itemsPanel = document.getElementById('itemsPanel');
+      
+      // Array of bright blue variations
+      const blueColors = [
+        '#00ffff',  // cyan
+        '#0088ff',  // bright blue
+        '#00ccff',  // sky blue
+        '#4488ff',  // light blue
+        '#0066ff',  // royal blue
+        '#00aaff',  // azure
+        '#2299ff',  // dodger blue
+        '#00ddff'   // light cyan
+      ];
+      
+      Object.keys(gameData).forEach((itemText, index) => {
+        const item = document.createElement('div');
+        item.className = 'item';
+        item.draggable = true;
+        item.id = itemText.replace(/\s+/g, '-').toLowerCase(); // Create safe IDs
+        
+        // Assign a random blue color
+        const color = blueColors[index % blueColors.length];
+        item.style.color = color;
+        
+        // Split text into individual characters including spaces, wrap in spans
+        const chars = itemText.toUpperCase();
+        item.innerHTML = chars.split('').map(char => {
+          if (char === ' ') {
+            return '<span class="space">&nbsp;</span>';
+          }
+          return `<span>${char}</span>`;
+        }).join('');
+        
+        // Store original text for classification checking
+        item.dataset.originalText = itemText;
+        
+        itemsPanel.appendChild(item);
+      });
+    }
+
+    // Initialize items
+    createItems();
+
+    // Get all items and categories after creation
+    const items = document.querySelectorAll('.item');
+    const categories = document.querySelectorAll('.category');
+
+    items.forEach(item => {
+      item.addEventListener('dragstart', () => {
+        item.classList.add('dragging');
+      });
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+      });
+    });
+
+    categories.forEach(category => {
+      category.addEventListener('dragover', e => {
+        e.preventDefault();
+        category.classList.add('drag-over');
+      });
+
+      category.addEventListener('dragleave', () => {
+        category.classList.remove('drag-over');
+      });
+
+      category.addEventListener('drop', () => {
+        const draggingItem = document.querySelector('.dragging');
+        if (draggingItem) {
+          category.appendChild(draggingItem);
+        }
+        category.classList.remove('drag-over');
+      });
+    });
+
+    function checkAnswers() {
+      let total = Object.keys(gameData).length;
+      let correct = 0;
+
+      for (let [itemText, correctCategory] of Object.entries(gameData)) {
+        const itemId = itemText.replace(/\s+/g, '-').toLowerCase();
+        const el = document.getElementById(itemId);
+        if (el && el.parentElement.id === correctCategory) {
+          correct++;
+        }
+      }
+
+      const resultEl = document.getElementById('result');
+      if (correct === total) {
+        resultEl.innerHTML = `CLASSIFICATION COMPLETE. ALL ENTRIES CORRECT.<br>STANDBY FOR YOUR MUSIC DANCE EXPERIENCE.`;
+        resultEl.className = "result correct";
+        
+        // Show reward video
+        setTimeout(showRewardVideo, 5000);
+      } else {
+        resultEl.innerHTML = `ERROR: ${correct}/${total} CORRECT. REEVALUATE INPUT.`;
+        resultEl.className = "result incorrect";
+      }
+    }
+
+    // Show reward video
+    function showRewardVideo() {
+      const videoOverlay = document.getElementById('videoReward');
+      const video = document.getElementById('rewardVideo');
+      
+      videoOverlay.style.display = 'flex';
+      video.currentTime = 0; // Reset to beginning
+      video.play().catch(e => {
+        console.log('Video autoplay blocked, user can manually start');
+      });
+    }
+
+    // Close video overlay
+    function closeVideo() {
+      const videoOverlay = document.getElementById('videoReward');
+      const video = document.getElementById('rewardVideo');
+      
+      video.pause();
+      video.currentTime = 0;
+      videoOverlay.style.display = 'none';
+    }
+
+    // Toggle wiggle effect
+    let wiggleEnabled = true;
+    function toggleWiggle() {
+      const body = document.body;
+      const button = document.getElementById('wiggleToggle');
+      
+      if (wiggleEnabled) {
+        body.classList.add('no-wiggle');
+        button.textContent = 'Enable Wiggle';
+        wiggleEnabled = false;
+      } else {
+        body.classList.remove('no-wiggle');
+        button.textContent = 'Disable Wiggle';
+        wiggleEnabled = true;
+      }
+    }
+	const bootLines = [
+"Verifying system integrity...",
+"[WAIT:3000]",
+"System Integrity: PENDING",
+"[WAIT:4000]",
+" ",
+" ",
+"                  **************",
+"              **********************",
+"           ****************************",
+"        ***********            ***********",
+"       ********                    ********",
+"     ********========================********",
+"    *******  |                      |  *******",
+"   *******   |                      |   *******",
+"   ******    |                      |    ******",
+"  ******     |                      |     ******      INVISIBLE SYSTEMS v1.3",
+"  ******     |                      |     ******",
+"  ******     |                      |     ******      (c) 1986 Image Production Division",
+"  ******     |                      |     ******",
+"  ******     |                      |     ******",
+"   ******    |                      |    ******",
+"   *******   |                      |   *******",
+"    *******  |                      |  *******",
+"     ********========================********",
+"       ********                    ********",
+"        ***********            ***********",
+"           ****************************",
+"              **********************",
+"                  **************",
+	 " ",
+	 " ",
+	  "Booting Image Production Core...",
+	  "Loading Prompt Engine...",
+	  "Allocating Memory Segments...        OK",
+	  "Establishing Session Handshake...    OK",
+	  "Checking Campaign Definitions...     PASS",
+	  "Verifying Color Channels...          PASS",
+	  "Loading User Permissions...          OK",
+	  "System Integrity: NOMINAL",
+	  "------------------------------",
+	  "Loading terminal..."
+	];
+
+	const bootScreen = document.getElementById('boot-screen');
+	const bootOutput = document.getElementById('boot-output');
+	let bootIndex = 0;
+
+	function printNextLine() {
+	  if (bootIndex < bootLines.length) {
+		const line = bootLines[bootIndex];
+
+		const waitMatch = line.match(/^\[WAIT:(\d+)\]$/);
+		if (waitMatch) {
+		  const delay = parseInt(waitMatch[1]);
+		  bootIndex++;
+		  setTimeout(printNextLine, delay); // Wait for custom time
+		} else {
+		  bootOutput.textContent += line + "\n";
+		  bootIndex++;
+		  setTimeout(printNextLine, 100 + Math.random() * 150);
+		}
+	  } else {
+		// Boot complete
+		window.addEventListener('keydown', hideBootScreen, { once: true });
+		setTimeout(hideBootScreen, 2500);
+	  }
+	}
+
+	function hideBootScreen() {
+	  bootScreen.style.transition = 'opacity 1s ease';
+	  bootScreen.style.opacity = '0';
+	  setTimeout(() => bootScreen.remove(), 1000);
+	}
+
+	const startOverlay = document.getElementById('startOverlay');
+	let bootStarted = false;
+
+	function startBoot() {
+	  if (bootStarted) return; // Prevent multiple calls
+	  bootStarted = true;
+	  
+	  if (startOverlay) startOverlay.remove();
+
+	  const bootSound = document.getElementById('bootSound');
+	  if (bootSound) {
+		bootSound.loop = false;
+		bootSound.play().catch(() => {
+		  console.warn("Boot sound blocked again.");
+		});
+	  }
+
+	  setTimeout(printNextLine, 500);
+	}
+
+	// Add event listeners
+	if (startOverlay) {
+	  startOverlay.addEventListener('click', startBoot);
+	  startOverlay.addEventListener('keydown', startBoot);
+	}
+
+  </script>
+</body>
+</html>
